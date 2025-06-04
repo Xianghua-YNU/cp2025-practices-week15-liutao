@@ -15,7 +15,7 @@ L_CONST = 0.4   # 每个摆臂的长度 (m)
 M_CONST = 1.0   # 每个摆锤的质量 (kg)
 
 def derivatives(y, t, L1, L2, m1, m2, g):
-   """
+    """
     返回双摆状态向量y的时间导数。
     """
     theta1, omega1, theta2, omega2 = y
