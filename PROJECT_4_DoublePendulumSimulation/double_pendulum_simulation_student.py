@@ -16,37 +16,35 @@ M_CONST = 1.0   # 每个摆锤的质量 (kg)
 
 def derivatives(y, t, L1, L2, m1, m2, g):
     """
-    返回双摆状态向量y的时间导数。
+    Returns the time derivatives of the double pendulum state vector y.
     """
     theta1, omega1, theta2, omega2 = y
     
-    # 计算公共分母
-    common_denominator = 3 - np.cos(2*theta1 - 2*theta2)
+    # Compute common denominator
+    delta = theta1 - theta2
+    cos_delta = np.cos(2*delta)
+    common_denominator = 3 - cos_delta
     
-    # 计算 domega1/dt
-    domega1_dt_numerator = -(
-        omega1**2 * np.sin(2*theta1 - 2*theta2) +
-        2 * omega2**2 * np.sin(theta1 - theta2) +
-        (g/L1) * (np.sin(theta1 - 2*theta2) + 3*np.sin(theta1))
-    )
-    domega1_dt = domega1_dt_numerator / common_denominator
+    # Compute domega1/dt
+    term1 = omega1**2 * np.sin(2*delta)
+    term2 = 2 * omega2**2 * np.sin(delta)
+    term3 = (g/L1) * (np.sin(theta1 - 2*theta2) + 3*np.sin(theta1))
+    domega1_dt = -(term1 + term2 + term3) / common_denominator
     
-    # 计算 domega2/dt
-    domega2_dt_numerator = (
-        4 * omega1**2 * np.sin(theta1 - theta2) +
-        omega2**2 * np.sin(2*theta1 - 2*theta2) +
-        2 * (g/L1) * (np.sin(2*theta1 - theta2) - np.sin(theta2))
-    )
-    domega2_dt = domega2_dt_numerator / common_denominator
+    # Compute domega2/dt
+    term4 = 4 * omega1**2 * np.sin(delta)
+    term5 = omega2**2 * np.sin(2*delta)
+    term6 = 2 * (g/L1) * (np.sin(2*theta1 - theta2) - np.sin(theta2))
+    domega2_dt = (term4 + term5 + term6) / common_denominator
     
     return [omega1, domega1_dt, omega2, domega2_dt]
     
 
 def solve_double_pendulum(initial_conditions, t_span, t_points, L_param=L_CONST, g_param=G_CONST):
     """
-    使用 odeint 求解双摆的常微分方程组。
+    Solves the ODE system for the double pendulum using solve_ivp (higher precision).
     """
-    # 从字典创建初始状态向量
+    # Create initial state vector from dictionary
     y0 = [
         initial_conditions['theta1'],
         initial_conditions['omega1'],
@@ -54,62 +52,67 @@ def solve_double_pendulum(initial_conditions, t_span, t_points, L_param=L_CONST,
         initial_conditions['omega2']
     ]
     
-    # 创建时间数组
-    t_arr = np.linspace(t_span[0], t_span[1], t_points)
+    # Create time array
+    t_eval = np.linspace(t_span[0], t_span[1], t_points)
     
-    # 求解ODE
-    sol_arr = odeint(
-        derivatives, 
-        y0, 
-        t_arr, 
-        args=(L_param, L_param, M_CONST, M_CONST, g_param),
-        rtol=1e-7,
-        atol=1e-7
+    # Solve ODE with high-order method
+    sol = solve_ivp(
+        fun=lambda t, y: derivatives(t, y, L_param, L_param, M_CONST, M_CONST, g_param),
+        t_span=t_span,
+        y0=y0,
+        t_eval=t_eval,
+        method='DOP853',  # High-precision method
+        rtol=1e-10,      # Strict relative tolerance
+        atol=1e-10       # Strict absolute tolerance
     )
     
-    return t_arr, sol_arr
+    # Transpose solution array to match odeint format
+    sol_arr = sol.y.T
+    
+    return sol.t, sol_arr
 
 def calculate_energy(sol_arr, L_param=L_CONST, m_param=M_CONST, g_param=G_CONST):
     """
-    计算双摆系统的总能量 (动能 + 势能)。
+    Calculates the total energy (kinetic + potential) of the double pendulum system.
     """
     theta1 = sol_arr[:, 0]
     omega1 = sol_arr[:, 1]
     theta2 = sol_arr[:, 2]
     omega2 = sol_arr[:, 3]
     
-    # 计算势能
+    # Potential energy
     V = -m_param * g_param * L_param * (2 * np.cos(theta1) + np.cos(theta2))
     
-    # 计算动能
+    # Kinetic energy
     T = m_param * L_param**2 * (
         omega1**2 + 
         0.5 * omega2**2 + 
         omega1 * omega2 * np.cos(theta1 - theta2)
     )
     
-    return T + V
+    # Use high-precision data type
+    return T.astype(np.float64) + V.astype(np.float64)
 
 # --- 可选任务: 动画 --- (自动评分器不评分，但有助于可视化)
 def animate_double_pendulum(t_arr, sol_arr, L_param=L_CONST, skip_frames=10):
     """
-    (可选) 创建双摆的动画。
+    Creates an animation of the double pendulum.
     """
     theta1_all = sol_arr[:, 0]
     theta2_all = sol_arr[:, 2]
     
-    # 为动画选择帧
+    # Select frames for animation
     theta1_anim = theta1_all[::skip_frames]
     theta2_anim = theta2_all[::skip_frames]
     t_anim = t_arr[::skip_frames]
     
-    # 转换为笛卡尔坐标
+    # Convert to Cartesian coordinates
     x1 = L_param * np.sin(theta1_anim)
     y1 = -L_param * np.cos(theta1_anim)
     x2 = x1 + L_param * np.sin(theta2_anim)
     y2 = y1 - L_param * np.cos(theta2_anim)
     
-    # 设置图形和坐标轴
+    # Set up figure and axes
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, autoscale_on=False, 
                          xlim=(-2*L_param-0.1, 2*L_param+0.1), 
@@ -118,31 +121,62 @@ def animate_double_pendulum(t_arr, sol_arr, L_param=L_CONST, skip_frames=10):
     ax.grid()
     ax.set_xlabel('x (m)')
     ax.set_ylabel('y (m)')
-    ax.set_title('双摆动画')
+    ax.set_title('Double Pendulum Animation')
     
+    # Add trace for trajectory
+    trace, = ax.plot([], [], ',-', lw=1, alpha=0.5, color='blue')
     line, = ax.plot([], [], 'o-', lw=2, markersize=8, color='red')
-    time_template = '时间 = %.1fs'
+    time_template = 'Time = %.1f s'
     time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
+    energy_template = 'Energy Change = %.2e J'
+    energy_text = ax.text(0.05, 0.85, '', transform=ax.transAxes)
+    
+    # Store trajectory
+    x2_history = []
+    y2_history = []
     
     def init():
         line.set_data([], [])
+        trace.set_data([], [])
         time_text.set_text('')
-        return line, time_text
+        energy_text.set_text('')
+        return line, trace, time_text, energy_text
     
     def animate(i):
+        # Update pendulum line
         thisx = [0, x1[i], x2[i]]
         thisy = [0, y1[i], y2[i]]
         line.set_data(thisx, thisy)
+        
+        # Update trajectory
+        x2_history.append(x2[i])
+        y2_history.append(y2[i])
+        trace.set_data(x2_history, y2_history)
+        
+        # Update text
         time_text.set_text(time_template % t_anim[i])
-        return line, time_text
+        
+        # Calculate and display energy change
+        if i > 0:
+            idx = i * skip_frames
+            energy_current = calculate_energy(sol_arr[idx:idx+1])[0]
+            energy_change = abs(energy_current - energy0)
+            energy_text.set_text(energy_template % energy_change)
+        
+        return line, trace, time_text, energy_text
     
-    # 创建动画
+    # Calculate initial energy
+    energy0 = calculate_energy(sol_arr[0:1])[0]
+    
+    # Create animation
     ani = animation.FuncAnimation(
         fig, animate, frames=len(t_anim),
         interval=25, blit=True, init_func=init
     )
     
     return ani
+    
+    
 
 if __name__ == '__main__':
     # 本节用于您的测试和可视化。
