@@ -26,7 +26,7 @@ def derivatives(y, t, L1, L2, m1, m2, g):
     # Numerator and denominator for domega1_dt
     num1 = -omega1**2 * np.sin(2*theta1 - 2*theta2) \
            - 2 * omega2**2 * np.sin(theta1 - theta2) \
-           - (g_param/L1) * (np.sin(theta1 - 2*theta2) + 3*np.sin(theta1))
+           - (g/L1) * (np.sin(theta1 - 2*theta2) + 3*np.sin(theta1))
     den1 = 3 - np.cos(2*theta1 - 2*theta2)
     
     domega1_dt = num1 / den1
@@ -34,14 +34,14 @@ def derivatives(y, t, L1, L2, m1, m2, g):
     # Numerator and denominator for domega2_dt
     num2 = 4 * omega1**2 * np.sin(theta1 - theta2) \
            + omega2**2 * np.sin(2*theta1 - 2*theta2) \
-           + 2 * (g_param/L1) * (np.sin(2*theta1 - theta2) - np.sin(theta2))
+           + 2 * (g/L1) * (np.sin(2*theta1 - theta2) - np.sin(theta2))
     den2 = 3 - np.cos(2*theta1 - 2*theta2)
     
     domega2_dt = num2 / den2
     
     return [dtheta1_dt, domega1_dt, dtheta2_dt, domega2_dt]
 
-def solve_double_pendulum(initial_conditions, t_span, t_points, L_param=L_CONST, g_param=G_CONST):
+def solve_double_pendulum(initial_conditions, t_span, t_points, L_param=L_CONST, g=G_CONST):
     """
     Solves the double pendulum ODEs using odeint with high precision settings.
     """
@@ -52,7 +52,7 @@ def solve_double_pendulum(initial_conditions, t_span, t_points, L_param=L_CONST,
     
     # Using strict tolerances for better energy conservation
     sol_arr = odeint(derivatives, y0, t_arr, 
-                     args=(L_param, L_param, M_CONST, M_CONST, g_param), 
+                     args=(L_param, L_param, M_CONST, M_CONST, g), 
                      rtol=1e-10, atol=1e-10)
     
     return t_arr, sol_arr
@@ -60,7 +60,7 @@ def solve_double_pendulum(initial_conditions, t_span, t_points, L_param=L_CONST,
 
 
 
-def calculate_energy(sol_arr, L_param=L_CONST, m_param=M_CONST, g_param=G_CONST):
+def calculate_energy(sol_arr, L_param=L_CONST, m_param=M_CONST, g=G_CONST):
     """
     Calculates the total energy (kinetic + potential) of the double pendulum system.
     """
@@ -70,7 +70,7 @@ def calculate_energy(sol_arr, L_param=L_CONST, m_param=M_CONST, g_param=G_CONST)
     omega2 = sol_arr[:, 3]
 
     # Potential Energy (V)
-    V = -m_param * g_param * L_param * (2 * np.cos(theta1) + np.cos(theta2))
+    V = -m_param * g * L_param * (2 * np.cos(theta1) + np.cos(theta2))
 
     # Kinetic Energy (T)
     T = m_param * L_param**2 * (omega1**2 + 0.5 * omega2**2 + omega1 * omega2 * np.cos(theta1 - theta2))
