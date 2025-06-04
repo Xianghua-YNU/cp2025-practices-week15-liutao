@@ -77,6 +77,49 @@ def calculate_energy(sol_arr, L_param=L_CONST, m_param=M_CONST, g_param=G_CONST)
     
     return T + V
 
+def analyze_energy(t_arr, energy):
+    """Detailed analysis of energy conservation"""
+    # Calculate energy statistics
+    energy_min = np.min(energy)
+    energy_max = np.max(energy)
+    energy_change = energy_max - energy_min
+    
+    # Calculate energy change rate
+    energy_diff = np.diff(energy)
+    max_diff = np.max(np.abs(energy_diff))
+    
+    print("\n=== Energy Conservation Analysis ===")
+    print(f"Initial Energy: {energy[0]:.8f} J")
+    print(f"Minimum Energy: {energy_min:.8f} J")
+    print(f"Maximum Energy: {energy_max:.8f} J")
+    print(f"Maximum Absolute Change: {energy_change:.3e} J")
+    print(f"Maximum Instantaneous Change: {max_diff:.3e} J/step")
+    
+    # Create detailed energy plots
+    plt.figure(figsize=(12, 8))
+    
+    # Total energy plot
+    plt.subplot(2, 1, 1)
+    plt.plot(t_arr, energy, label='Total Energy')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Energy (Joules)')
+    plt.title('Double Pendulum: Total Energy Evolution')
+    plt.grid(True)
+    plt.legend()
+    
+    # Energy change plot
+    plt.subplot(2, 1, 2)
+    plt.plot(t_arr[1:], np.abs(energy_diff), 'r-')
+    plt.yscale('log')
+    plt.xlabel('Time (s)')
+    plt.ylabel('|dE/dt| (Joules/step)')
+    plt.title('Energy Change Rate (Log Scale)')
+    plt.grid(True)
+    
+    plt.tight_layout()
+    
+    return energy_change
+
 # --- 可选任务: 动画 --- (自动评分器不评分，但有助于可视化)
 def animate_double_pendulum(t_arr, sol_arr, L_param=L_CONST, skip_frames=10):
     """
